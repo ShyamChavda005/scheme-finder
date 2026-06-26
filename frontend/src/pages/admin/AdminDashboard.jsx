@@ -74,9 +74,6 @@ export default function AdminDashboard() {
           <button className="btn btn-primary action-btn" onClick={() => navigate('/admin/add-scheme')} id="action-add-scheme">
             <FiPlusCircle size={18} /> Add Schemes
           </button>
-          <button className="btn btn-secondary action-btn" onClick={() => navigate('/admin/schemes')} id="action-manage">
-            <FiDatabase size={18} /> Manage Schemes
-          </button>
           <button className="btn btn-outline action-btn" onClick={() => navigate('/admin/users')} id="action-users">
             <FiEye size={18} /> View Users
           </button>

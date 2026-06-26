@@ -25,9 +25,17 @@ function initDb() {
       ministry TEXT,
       scheme_type TEXT,
       is_active BOOLEAN DEFAULT 1,
-      eligibility TEXT
+      eligibility TEXT,
+      source_url TEXT DEFAULT ''
     )
-  `);
+  `, () => {
+    // Migration: add source_url column if it doesn't exist in older databases
+    db.run(`ALTER TABLE schemes ADD COLUMN source_url TEXT DEFAULT ''`, (err) => {
+      if (err && !err.message.includes('duplicate column')) {
+        // Column already exists or other non-critical error — ignore
+      }
+    });
+  });
 
   db.run(`
     CREATE TABLE IF NOT EXISTS review_queue (
@@ -56,17 +64,45 @@ function initDb() {
     )
   `);
 
+  // User profiles table — stores the eligibility form submissions
+  db.run(`
+    CREATE TABLE IF NOT EXISTS user_profiles (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      username TEXT NOT NULL,
+      full_name TEXT NOT NULL,
+      age INTEGER,
+      gender TEXT,
+      has_disability BOOLEAN DEFAULT 0,
+      disability_type TEXT,
+      disability_percentage INTEGER DEFAULT 0,
+      state TEXT,
+      district TEXT,
+      category TEXT,
+      family_income REAL,
+      education_level TEXT,
+      udid_number TEXT,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(username)
+    )
+  `);
+
   db.run(`
     CREATE TABLE IF NOT EXISTS admins (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       username TEXT UNIQUE NOT NULL,
-      password TEXT NOT NULL
+      password TEXT NOT NULL,
+      email TEXT,
+      full_name TEXT
     )
   `, () => {
+    // Migrations
+    db.run(`ALTER TABLE admins ADD COLUMN email TEXT`, (err) => {});
+    db.run(`ALTER TABLE admins ADD COLUMN full_name TEXT`, (err) => {});
+
     // Seed default admin
     db.get("SELECT * FROM admins WHERE username = 'admin'", (err, row) => {
       if (!row) {
-        db.run("INSERT INTO admins (username, password) VALUES ('admin', 'admin@123')");
+        db.run("INSERT INTO admins (username, password, email, full_name) VALUES ('admin', 'admin@123', 'admin@example.com', 'System Admin')");
       }
     });
   });

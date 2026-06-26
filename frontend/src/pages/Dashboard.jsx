@@ -1,46 +1,102 @@
 import { useState, useEffect, useMemo } from 'react';
-import { FiSearch, FiFilter, FiVolume2, FiInbox, FiTrendingUp, FiCheckCircle } from 'react-icons/fi';
-import { staticSchemes, checkEligibility } from '../data/staticSchemes';
+import { FiSearch, FiFilter, FiVolume2, FiInbox, FiTrendingUp, FiCheckCircle, FiPercent, FiShield } from 'react-icons/fi';
 import SchemeCard from '../components/SchemeCard';
 import TextToSpeech from '../components/TextToSpeech';
-import LoadingSpinner from '../components/LoadingSpinner';
 import { useAuth } from '../context/AuthContext';
 import './Dashboard.css';
 
+const API_BASE = 'http://localhost:5000/api';
 const SCHEME_TYPES = ['All', 'Scholarship', 'Pension', 'Assistive Device', 'Employment', 'Skill Training', 'Financial Assistance', 'Other'];
 
+// ═══ SKELETON COMPONENTS ═══
+function SkeletonCard() {
+  return (
+    <div className="skeleton-card">
+      <div className="skeleton-header">
+        <div className="skeleton-badge skeleton-pulse" />
+        <div className="skeleton-date skeleton-pulse" />
+      </div>
+      <div className="skeleton-title skeleton-pulse" />
+      <div className="skeleton-ministry skeleton-pulse" />
+      <div className="skeleton-line skeleton-pulse" />
+      <div className="skeleton-line short skeleton-pulse" />
+      <div className="skeleton-footer">
+        <div className="skeleton-btn skeleton-pulse" />
+      </div>
+    </div>
+  );
+}
+
+function SkeletonSummary() {
+  return (
+    <div className="summary-cards grid grid-3">
+      {[1, 2, 3].map(i => (
+        <div key={i} className="card summary-card">
+          <div className="skeleton-icon skeleton-pulse" />
+          <div style={{ flex: 1 }}>
+            <div className="skeleton-stat-val skeleton-pulse" />
+            <div className="skeleton-stat-label skeleton-pulse" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function Dashboard() {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const [schemes, setSchemes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [activeFilter, setActiveFilter] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [showTTS, setShowTTS] = useState(false);
+  const [matchStats, setMatchStats] = useState({ total: 0, highMatch: 0, avgScore: 0 });
 
   useEffect(() => {
-    const fetchSchemes = () => {
+    const fetchEligibleSchemes = async () => {
+      setLoading(true);
       try {
-        const profileKey = user ? `demoUserProfile_${user.id}` : 'demoUserProfile';
-        const storedProfile = localStorage.getItem(profileKey);
-        if (!storedProfile) {
+        // 1. Get user profile from backend
+        const username = user?.username || 'guest';
+        const profileRes = await fetch(`${API_BASE}/profile/${username}`);
+
+        if (!profileRes.ok) {
           setError('profile_incomplete');
-        } else {
-          const profile = JSON.parse(storedProfile);
-          // Filter static and custom schemes based on the profile
-          const customSchemes = JSON.parse(localStorage.getItem('demoCustomSchemes') || '[]');
-          const allSchemes = [...staticSchemes, ...customSchemes];
-          const eligibleSchemes = allSchemes.filter(scheme => checkEligibility(profile, scheme));
-          setSchemes(eligibleSchemes);
+          setLoading(false);
+          return;
         }
+
+        const profile = await profileRes.json();
+
+        // 2. Send profile to matching API to find eligible schemes
+        const matchRes = await fetch(`${API_BASE}/schemes/match`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(profile),
+        });
+
+        if (!matchRes.ok) throw new Error('Failed to match schemes');
+
+        const matchedSchemes = await matchRes.json();
+        setSchemes(matchedSchemes);
+
+        // Calculate stats
+        const highMatch = matchedSchemes.filter(s => s.match_score >= 80).length;
+        const avgScore = matchedSchemes.length > 0
+          ? Math.round(matchedSchemes.reduce((sum, s) => sum + s.match_score, 0) / matchedSchemes.length)
+          : 0;
+        setMatchStats({ total: matchedSchemes.length, highMatch, avgScore });
+
       } catch (err) {
+        console.error('Dashboard fetch error:', err);
         setError('Failed to load schemes. Please try again.');
       } finally {
         setLoading(false);
       }
     };
-    // Add an artificial delay to simulate loading for the demo
-    setTimeout(fetchSchemes, 800);
+
+    fetchEligibleSchemes();
   }, [user]);
 
   const filtered = useMemo(() => {
@@ -68,7 +124,39 @@ export default function Dashboard() {
     [filtered]
   );
 
-  if (loading) return <LoadingSpinner message="Finding your eligible schemes..." />;
+  // ═══ SKELETON LOADING STATE ═══
+  if (loading) {
+    return (
+      <div className="dashboard-container" role="main" aria-label="Loading Dashboard">
+        <header className="page-header">
+          <h1 className="page-title">
+            <div className="skeleton-inline skeleton-pulse" style={{ width: 200, height: 32, borderRadius: 8 }} />
+          </h1>
+        </header>
+
+        <SkeletonSummary />
+
+        <div className="dashboard-controls card-static">
+          <div className="skeleton-search skeleton-pulse" />
+          <div style={{ display: 'flex', gap: 8 }}>
+            {[1, 2, 3, 4].map(i => (
+              <div key={i} className="skeleton-chip skeleton-pulse" />
+            ))}
+          </div>
+        </div>
+
+        <div className="dashboard-content mt-6">
+          <div className="schemes-grid grid grid-2">
+            {[1, 2, 3, 4, 5, 6].map(i => (
+              <div key={i} className={`stagger-${i} animate-slide-up`} style={{ animationFillMode: 'both' }}>
+                <SkeletonCard />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (error === 'profile_incomplete') {
     return (
@@ -76,8 +164,8 @@ export default function Dashboard() {
         <div className="empty-state card">
           <div className="empty-state-icon" aria-hidden="true">📋</div>
           <h2 className="empty-state-title">Complete Your Profile First</h2>
-          <p className="empty-state-text">Please fill out your eligibility form so we can find matching government schemes for you.</p>
-          <a href="/form" className="btn btn-primary btn-lg mt-4">Fill Eligibility Form</a>
+          <p className="empty-state-text">Please fill out your profile so we can find matching government schemes for you from our database.</p>
+          <a href="/profile" className="btn btn-primary btn-lg mt-4">Complete Profile</a>
         </div>
       </div>
     );
@@ -98,11 +186,11 @@ export default function Dashboard() {
 
   return (
     <div className="dashboard-container" role="main" aria-label="Eligible Schemes Dashboard">
-      
-      {/* Dashboard Header section */}
+
+      {/* Dashboard Header */}
       <header className="page-header">
         <h1 className="page-title">
-          Dashboard
+          Your Eligible Schemes
           {schemes.length > 0 && (
             <span className="count-badge" aria-label={`${schemes.length} schemes found`}>
               {schemes.length}
@@ -110,6 +198,11 @@ export default function Dashboard() {
           )}
         </h1>
         <div className="header-actions">
+          {/* {!isAdmin && (
+            <a href="/profile" className="btn btn-outline" style={{ fontSize: '0.85rem' }}>
+              ✏️ Update Profile
+            </a>
+          )} */}
           <button
             className={`btn btn-outline ${showTTS ? 'active' : ''}`}
             onClick={() => setShowTTS(!showTTS)}
@@ -128,8 +221,8 @@ export default function Dashboard() {
             <FiTrendingUp size={24} />
           </div>
           <div className="summary-info">
-            <h3>{schemes.length}</h3>
-            <p>Total Eligible</p>
+            <h3>{matchStats.total}</h3>
+            <p>Schemes Matched</p>
           </div>
         </div>
         <div className="card summary-card">
@@ -137,8 +230,17 @@ export default function Dashboard() {
             <FiCheckCircle size={24} />
           </div>
           <div className="summary-info">
-            <h3>Active</h3>
-            <p>Profile Status</p>
+            <h3>{matchStats.highMatch}</h3>
+            <p>High Match (≥80%)</p>
+          </div>
+        </div>
+        <div className="card summary-card">
+          <div className="summary-icon-wrapper" style={{ background: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b' }}>
+            <FiPercent size={24} />
+          </div>
+          <div className="summary-info">
+            <h3>{matchStats.avgScore}%</h3>
+            <p>Avg Match Score</p>
           </div>
         </div>
       </div>
@@ -188,18 +290,18 @@ export default function Dashboard() {
             <h2 className="empty-state-title">No Schemes Found</h2>
             <p className="empty-state-text">
               {schemes.length === 0
-                ? "Based on your profile, we couldn't find matching schemes right now. New schemes are added regularly — check back soon!"
+                ? "Based on your profile, we couldn't find matching active schemes right now. The admin may add new schemes — check back soon!"
                 : 'No schemes match your current filter. Try adjusting your search or filter.'}
             </p>
             {schemes.length === 0 && (
-              <a href="/form" className="btn btn-primary mt-4">Update Your Profile</a>
+              <a href="/profile" className="btn btn-primary mt-4">Update Your Profile</a>
             )}
           </div>
         ) : (
           <div className="schemes-grid grid grid-2" role="list" aria-label="List of eligible schemes">
             {filtered.map((scheme, index) => (
               <div key={scheme.id} role="listitem" className={`stagger-${(index % 6) + 1} animate-slide-up`} style={{ animationFillMode: 'both' }}>
-                <SchemeCard scheme={scheme} />
+                <SchemeCard scheme={scheme} showMatchScore />
               </div>
             ))}
           </div>

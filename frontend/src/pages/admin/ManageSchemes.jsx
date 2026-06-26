@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react';
-import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiX } from 'react-icons/fi';
+import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiX, FiRefreshCw } from 'react-icons/fi';
 import { toast } from 'react-toastify';
+import LoadingSpinner from '../../components/LoadingSpinner';
 import './Admin.css';
+
+const API_BASE = 'http://localhost:5000/api';
 
 const EMPTY_SCHEME = {
   name: '', description: '', benefits: '', required_documents: [],
@@ -33,11 +36,17 @@ export default function ManageSchemes() {
   const [filterTab, setFilterTab] = useState('active');
 
   const fetchSchemes = async () => {
+    setLoading(true);
     try {
-      const res = await fetch('http://localhost:5000/api/schemes');
+      const res = await fetch(`${API_BASE}/schemes`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       setSchemes(Array.isArray(data) ? data : []);
-    } catch { toast.error('Failed to load schemes from database'); }
+    } catch (err) {
+      console.error('Failed to load schemes:', err);
+      toast.error('Failed to load schemes from database. Is the backend running?');
+      setSchemes([]);
+    }
     setLoading(false);
   };
 
@@ -56,8 +65,16 @@ export default function ManageSchemes() {
     setForm({
       ...scheme,
       last_date: scheme.last_date || '',
+      source_url: scheme.source_url || '',
       required_documents: scheme.required_documents || [],
-      eligibility: scheme.eligibility || EMPTY_SCHEME.eligibility,
+      eligibility: {
+        ...EMPTY_SCHEME.eligibility,
+        ...(scheme.eligibility || {}),
+        disability_types: scheme.eligibility?.disability_types || [],
+        states: scheme.eligibility?.states || [],
+        categories: scheme.eligibility?.categories || [],
+        education_levels: scheme.eligibility?.education_levels || [],
+      },
     });
     setShowModal(true);
   };
@@ -65,10 +82,40 @@ export default function ManageSchemes() {
   const handleDeactivate = async (id) => {
     if (!window.confirm('Are you sure you want to deactivate this scheme? It will be moved to the deactivated logs.')) return;
     try {
-      await fetch(`http://localhost:5000/api/schemes/${id}/deactivate`, { method: 'PUT' });
-      toast.success('Scheme deactivated');
+      const res = await fetch(`${API_BASE}/schemes/${id}/deactivate`, { method: 'PUT' });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      toast.success('Scheme deactivated successfully');
       fetchSchemes();
-    } catch { toast.error('Failed to deactivate'); }
+    } catch (err) {
+      console.error('Deactivate failed:', err);
+      toast.error('Failed to deactivate scheme');
+    }
+  };
+
+  const handleReactivate = async (id) => {
+    if (!window.confirm('Re-activate this scheme? It will appear in the active schemes list again.')) return;
+    try {
+      const res = await fetch(`${API_BASE}/schemes/${id}/reactivate`, { method: 'PUT' });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      toast.success('Scheme reactivated successfully');
+      fetchSchemes();
+    } catch (err) {
+      console.error('Reactivate failed:', err);
+      toast.error('Failed to reactivate scheme');
+    }
+  };
+
+  const handleDelete = async (id, name) => {
+    if (!window.confirm(`Permanently delete "${name}"? This cannot be undone.`)) return;
+    try {
+      const res = await fetch(`${API_BASE}/schemes/${id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      toast.success('Scheme deleted permanently');
+      fetchSchemes();
+    } catch (err) {
+      console.error('Delete failed:', err);
+      toast.error('Failed to delete scheme');
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -92,25 +139,30 @@ export default function ManageSchemes() {
       },
     };
     try {
+      let res;
       if (editingScheme) {
-        await fetch(`http://localhost:5000/api/schemes/${editingScheme.id}`, {
+        res = await fetch(`${API_BASE}/schemes/${editingScheme.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
         });
-        toast.success('Scheme updated');
       } else {
-        await fetch('http://localhost:5000/api/schemes', {
+        res = await fetch(`${API_BASE}/schemes`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
         });
-        toast.success('Scheme created');
       }
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || `HTTP ${res.status}`);
+      }
+      toast.success(editingScheme ? 'Scheme updated successfully!' : 'Scheme created successfully!');
       setShowModal(false);
       fetchSchemes();
     } catch (err) {
-      toast.error('Failed to save scheme');
+      console.error('Save failed:', err);
+      toast.error(`Failed to save scheme: ${err.message}`);
     }
     setSaving(false);
   };
@@ -134,8 +186,8 @@ export default function ManageSchemes() {
       <h1 className="admin-title">Manage Schemes</h1>
 
       <div className="search-wrapper" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '1rem' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div className="search-bar" style={{ position: 'relative', flex: 1, maxWidth: '400px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+          <div className="search-bar" style={{ position: 'relative', flex: 1, minWidth: '200px', maxWidth: '400px' }}>
             <FiSearch style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
             <input
               type="search" className="input-field" style={{ paddingLeft: 42, width: '100%' }}
@@ -144,25 +196,30 @@ export default function ManageSchemes() {
               aria-label="Search schemes" id="admin-scheme-search"
             />
           </div>
-          <button className="btn btn-primary action-btn" onClick={openAdd} id="add-scheme-btn">
-            <FiPlus size={18} /> Add Scheme
-          </button>
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <button className="btn btn-outline action-btn" onClick={fetchSchemes} title="Refresh list" id="refresh-schemes-btn">
+              <FiRefreshCw size={16} />
+            </button>
+            <button className="btn btn-primary action-btn" onClick={openAdd} id="add-scheme-btn">
+              <FiPlus size={18} /> Add Scheme
+            </button>
+          </div>
         </div>
 
-        <div style={{ display: 'flex', gap: '1rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem' }}>
+        <div style={{ display: 'flex', gap: '1rem', borderBottom: '1px solid var(--border-color, #e2e8f0)', paddingBottom: '0.5rem' }}>
           <button 
             className={`btn ${filterTab === 'active' ? 'btn-primary' : 'btn-outline'}`} 
             style={{ borderRadius: '20px', padding: '0.4rem 1.2rem' }}
             onClick={() => { setFilterTab('active'); setPage(1); }}
           >
-            Active Schemes
+            Active Schemes ({schemes.filter(s => s.is_active).length})
           </button>
           <button 
             className={`btn ${filterTab === 'deactivated' ? 'btn-danger' : 'btn-outline'}`} 
             style={{ borderRadius: '20px', padding: '0.4rem 1.2rem' }}
             onClick={() => { setFilterTab('deactivated'); setPage(1); }}
           >
-            Deactivated Logs
+            Deactivated Logs ({schemes.filter(s => !s.is_active).length})
           </button>
         </div>
       </div>
@@ -174,7 +231,7 @@ export default function ManageSchemes() {
               <th>Name</th>
               <th>Type</th>
               <th>Ministry</th>
-              <th>Active</th>
+              <th>Status</th>
               <th>Last Date</th>
               <th>Actions</th>
             </tr>
@@ -182,23 +239,42 @@ export default function ManageSchemes() {
           <tbody>
             {paginated.map((s) => (
               <tr key={s.id}>
-                <td style={{ maxWidth: 250, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.name}</td>
-                <td><span className="badge badge-primary">{s.scheme_type}</span></td>
-                <td>{s.ministry}</td>
-                <td><span className={s.is_active ? 'scheme-active' : 'scheme-inactive'}>{s.is_active ? 'Yes' : 'No'}</span></td>
-                <td>{s.last_date || '—'}</td>
-                <td>
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <button className="btn btn-outline" onClick={() => openEdit(s)} aria-label={`Edit ${s.name}`}><FiEdit2 size={14} /></button>
-                    {s.is_active && (
-                      <button className="btn btn-danger" onClick={() => handleDeactivate(s.id)} aria-label={`Deactivate ${s.name}`}>Deactivate</button>
+                <td style={{ maxWidth: 250, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={s.name}>{s.name}</td>
+                <td style={{ whiteSpace: 'nowrap' }}><span className="badge badge-primary">{s.scheme_type}</span></td>
+                <td style={{ maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={s.ministry || ''}>{s.ministry || '—'}</td>
+                <td style={{ whiteSpace: 'nowrap' }}>
+                  <span className={`status-badge ${s.is_active ? 'status-success' : 'status-error'}`}>
+                    {s.is_active ? 'Active' : 'Inactive'}
+                  </span>
+                </td>
+                <td style={{ whiteSpace: 'nowrap' }}>{s.last_date || '—'}</td>
+                <td style={{ whiteSpace: 'nowrap' }}>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'nowrap', alignItems: 'center' }}>
+                    <button className="btn btn-outline" onClick={() => openEdit(s)} aria-label={`Edit ${s.name}`} title="Edit scheme">
+                      <FiEdit2 size={14} />
+                    </button>
+                    {s.is_active ? (
+                      <button className="btn btn-danger" onClick={() => handleDeactivate(s.id)} aria-label={`Deactivate ${s.name}`} title="Deactivate scheme" style={{ fontSize: '0.75rem', padding: '4px 10px', whiteSpace: 'nowrap' }}>
+                        Deactivate
+                      </button>
+                    ) : (
+                      <button className="btn btn-primary" onClick={() => handleReactivate(s.id)} aria-label={`Reactivate ${s.name}`} title="Reactivate scheme" style={{ fontSize: '0.75rem', padding: '4px 10px', whiteSpace: 'nowrap' }}>
+                        Reactivate
+                      </button>
+                    )}
+                    {!s.is_active && (
+                      <button className="btn btn-danger" onClick={() => handleDelete(s.id, s.name)} aria-label={`Delete ${s.name}`} title="Permanently delete" style={{ fontSize: '0.75rem', padding: '4px 10px' }}>
+                        <FiTrash2 size={12} />
+                      </button>
                     )}
                   </div>
                 </td>
               </tr>
             ))}
             {paginated.length === 0 && (
-              <tr><td colSpan={6} style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)' }}>No schemes found</td></tr>
+              <tr><td colSpan={6} style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)' }}>
+                {filterTab === 'active' ? 'No active schemes found' : 'No deactivated schemes found'}
+              </td></tr>
             )}
           </tbody>
         </table>
@@ -255,6 +331,10 @@ export default function ManageSchemes() {
                   <label htmlFor="scheme-date">Last Date</label>
                   <input id="scheme-date" type="date" className="input-field" value={form.last_date} onChange={(e) => updateField('last_date', e.target.value)} />
                 </div>
+              </div>
+              <div className="input-group">
+                <label htmlFor="scheme-source">Source URL</label>
+                <input id="scheme-source" className="input-field" value={form.source_url || ''} onChange={(e) => updateField('source_url', e.target.value)} placeholder="https://..." />
               </div>
               <div className="input-group">
                 <label htmlFor="scheme-docs">Required Documents (comma-separated)</label>

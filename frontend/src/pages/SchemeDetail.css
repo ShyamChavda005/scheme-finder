@@ -204,3 +204,96 @@
   .scheme-actions { flex-direction: column; }
   .scheme-actions .btn { width: 100%; justify-content: center; }
 }
+
+/* ═══ ELIGIBILITY CRITERIA GRID ═══ */
+.eligibility-criteria-section {
+  padding: var(--spacing-xl);
+}
+
+.criteria-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: var(--spacing-md);
+}
+
+.criteria-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: var(--spacing-md);
+  background: var(--bg-surface, #f8fafc);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-light);
+}
+
+.criteria-label {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.criteria-value {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-primary);
+}
+
+/* ═══ MATCH SCORE DETAIL ═══ */
+.match-score-detail {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  padding: 6px 14px;
+  border-radius: var(--radius-full);
+  background: rgba(16, 185, 129, 0.08);
+}
+
+/* ═══ MATCH REASONS LIST ═══ */
+.match-reasons-section {
+  padding: var(--spacing-xl);
+  border-left: 4px solid #10b981;
+}
+
+.match-reasons-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.match-reason-item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: rgba(16, 185, 129, 0.04);
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(16, 185, 129, 0.1);
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.reason-icon {
+  color: #10b981;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+/* ═══ SKELETON LOADING ═══ */
+@keyframes skeletonPulse {
+  0% { opacity: 0.6; }
+  50% { opacity: 0.3; }
+  100% { opacity: 0.6; }
+}
+
+.skeleton-pulse {
+  animation: skeletonPulse 1.5s ease-in-out infinite;
+  background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 37%, #e2e8f0 63%);
+  background-size: 400% 100%;
+}
+

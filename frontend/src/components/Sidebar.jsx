@@ -1,6 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { FiGrid, FiUser, FiShield, FiLogOut, FiSettings, FiDatabase, FiCheckCircle, FiCpu, FiList, FiUsers } from 'react-icons/fi';
+import { FiGrid, FiUser, FiShield, FiLogOut, FiSettings, FiDatabase, FiCheckCircle, FiCpu, FiList, FiUsers, FiSearch, FiFileText } from 'react-icons/fi';
 import './Sidebar.css';
 
 export default function Sidebar({ mobileOpen, setMobileOpen }) {
@@ -21,16 +21,36 @@ export default function Sidebar({ mobileOpen, setMobileOpen }) {
 
         <nav className="sidebar-nav">
           <Link
-            to="/dashboard"
-            className={`sidebar-link ${isActive('/dashboard') ? 'active' : ''}`}
+            to={isAdmin ? "/admin" : "/dashboard"}
+            className={`sidebar-link ${location.pathname === (isAdmin ? '/admin' : '/dashboard') ? 'active' : ''}`}
             onClick={() => setMobileOpen(false)}
           >
             <FiGrid size={20} className="sidebar-icon" />
             <span>Dashboard</span>
           </Link>
+          {!isAdmin && (
+            <>
+              <Link
+                to="/finder"
+                className={`sidebar-link ${isActive('/finder') ? 'active' : ''}`}
+                onClick={() => setMobileOpen(false)}
+              >
+                <FiSearch size={20} className="sidebar-icon" />
+                <span>Scheme Finder</span>
+              </Link>
+              <Link
+                to="/my-eligibility"
+                className={`sidebar-link ${isActive('/my-eligibility') ? 'active' : ''}`}
+                onClick={() => setMobileOpen(false)}
+              >
+                <FiFileText size={20} className="sidebar-icon" />
+                <span>My Scheme Data</span>
+              </Link>
+            </>
+          )}
           <Link
-            to="/form"
-            className={`sidebar-link ${isActive('/form') ? 'active' : ''}`}
+            to="/profile"
+            className={`sidebar-link ${isActive('/profile') ? 'active' : ''}`}
             onClick={() => setMobileOpen(false)}
           >
             <FiUser size={20} className="sidebar-icon" />
@@ -41,20 +61,20 @@ export default function Sidebar({ mobileOpen, setMobileOpen }) {
             <>
               <div className="sidebar-divider">Admin</div>
               <Link
-                to="/admin"
-                className={`sidebar-link ${isActive('/admin') ? 'active' : ''}`}
-                onClick={() => setMobileOpen(false)}
-              >
-                <FiShield size={20} className="sidebar-icon" />
-                <span>Admin Panel</span>
-              </Link>
-              <Link
                 to="/admin/add-scheme"
                 className={`sidebar-link ${isActive('/admin/add-scheme') ? 'active' : ''}`}
                 onClick={() => setMobileOpen(false)}
               >
                 <FiDatabase size={20} className="sidebar-icon" />
                 <span>Add Schemes</span>
+              </Link>
+              <Link
+                to="/admin/schemes"
+                className={`sidebar-link ${isActive('/admin/schemes') ? 'active' : ''}`}
+                onClick={() => setMobileOpen(false)}
+              >
+                <FiList size={20} className="sidebar-icon" />
+                <span>Manage Schemes</span>
               </Link>
               <Link
                 to="/admin/active-schemes"
@@ -72,6 +92,7 @@ export default function Sidebar({ mobileOpen, setMobileOpen }) {
                 <FiCpu size={20} className="sidebar-icon" />
                 <span>AI Scheme Finder</span>
               </Link>
+
               <Link
                 to="/admin/review"
                 className={`sidebar-link ${isActive('/admin/review') ? 'active' : ''}`}
@@ -93,13 +114,6 @@ export default function Sidebar({ mobileOpen, setMobileOpen }) {
         </nav>
 
         <div className="sidebar-footer">
-          <Link
-            to="#"
-            className="sidebar-link"
-          >
-            <FiSettings size={20} className="sidebar-icon" />
-            <span>Settings</span>
-          </Link>
           <button className="sidebar-link sidebar-logout" onClick={logout}>
             <FiLogOut size={20} className="sidebar-icon" />
             <span>Log Out</span>

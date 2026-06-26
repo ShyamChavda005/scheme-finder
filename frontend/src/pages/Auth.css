@@ -2,6 +2,7 @@
   position: relative;
   display: flex;
   flex-direction: column;
+  flex: 1;
   min-height: 100vh;
   margin-top: calc(-1 * var(--navbar-height));
   padding-top: calc(var(--navbar-height) + 2rem);

@@ -83,35 +83,36 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(79, 70, 229, 0.12);
+  background: rgba(37, 99, 235, 0.1);
   color: var(--color-primary-raw);
   border-radius: var(--radius-md);
   flex-shrink: 0;
 }
 
 .section-icon-rose {
-  background: rgba(239, 68, 68, 0.1);
-  color: #F87171;
+  background: rgba(220, 38, 38, 0.1);
+  color: var(--color-error-raw);
 }
 
 .section-icon-emerald {
-  background: rgba(16, 185, 129, 0.1);
-  color: #34D399;
+  background: rgba(5, 150, 105, 0.1);
+  color: var(--color-success-raw);
 }
 
 .section-icon-amber {
-  background: rgba(245, 158, 11, 0.1);
-  color: #FBBF24;
+  background: rgba(217, 119, 6, 0.1);
+  color: var(--color-warning);
 }
 
 .section-icon-blue {
-  background: rgba(59, 130, 246, 0.1);
-  color: #60A5FA;
+  background: rgba(37, 99, 235, 0.1);
+  color: var(--color-primary-raw);
 }
 
 .section-title {
   font-size: var(--font-size-lg);
   font-weight: var(--font-weight-bold);
+  color: var(--text-primary);
 }
 
 .section-desc {
@@ -158,10 +159,15 @@
   appearance: none;
   width: 22px;
   height: 22px;
-  background: var(--gradient-primary);
+  background: var(--color-primary-raw);
   border-radius: 50%;
   cursor: pointer;
-  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.4);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  transition: transform var(--transition-fast);
+}
+
+.range-field::-webkit-slider-thumb:hover {
+  transform: scale(1.1);
 }
 
 .range-field::-moz-range-thumb {
@@ -171,6 +177,12 @@
   border-radius: 50%;
   border: none;
   cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  transition: transform var(--transition-fast);
+}
+
+.range-field::-moz-range-thumb:hover {
+  transform: scale(1.1);
 }
 
 .range-labels {
@@ -191,10 +203,12 @@
   min-width: 280px;
   font-size: var(--font-size-lg);
   background: var(--gradient-primary);
-  box-shadow: 0 6px 24px rgba(79, 70, 229, 0.4);
+  color: #ffffff;
+  box-shadow: var(--shadow-md);
+  border-radius: var(--radius-lg);
 }
 
 .eligibility-submit:hover:not(:disabled) {
-  box-shadow: 0 8px 32px rgba(79, 70, 229, 0.55);
+  box-shadow: var(--shadow-lg);
   transform: translateY(-2px);
 }
