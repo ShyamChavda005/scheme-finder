@@ -25,8 +25,12 @@ export default function Login() {
     setError('');
 
     try {
-      await login(username, password);
-      navigate('/dashboard');
+      const response = await login(username, password);
+      if (response.role === 'admin') {
+        navigate('/admin');
+      } else {
+        navigate('/dashboard');
+      }
     } catch (err) {
       setError(err.message || 'Invalid credentials. Please try again.');
     } finally {
