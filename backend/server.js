@@ -607,7 +607,7 @@ app.post('/api/ai/analyze', async (req, res) => {
           'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
         },
         body: JSON.stringify({
-          model: 'google/gemini-2.0-flash-exp:free',
+          model: 'openrouter/free',
           messages: [{ role: 'user', content: prompt }],
           temperature: 0.1,
           max_tokens: 500,

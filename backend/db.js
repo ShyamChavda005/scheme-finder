@@ -109,8 +109,8 @@ function initDb() {
     )
   `, () => {
     // Migrations
-    db.run(`ALTER TABLE admins ADD COLUMN email TEXT`, (err) => {});
-    db.run(`ALTER TABLE admins ADD COLUMN full_name TEXT`, (err) => {});
+    db.run(`ALTER TABLE admins ADD COLUMN email TEXT`, (err) => { });
+    db.run(`ALTER TABLE admins ADD COLUMN full_name TEXT`, (err) => { });
 
     // Seed default admin
     db.get("SELECT * FROM admins WHERE username = 'admin'", (err, row) => {
